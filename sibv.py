@@ -33,7 +33,7 @@ def sibv_mix(position: np.ndarray, better_position: np.ndarray) -> np.ndarray:
     assert feasible_vec(new_pos), 'sibv_mix() returned unfeasible vector'  
     return new_pos
     
-
+@dataclass
 class SIBV(SIB):
     def mix(self):
         for particle in self.particles:

@@ -1,4 +1,3 @@
-from networkx.generators.atlas import graph_atlas_g
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
