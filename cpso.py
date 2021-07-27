@@ -1,29 +1,32 @@
 import numpy as np
 from dataclasses import dataclass
 import time
+from numba import njit
+import numba
 from pso import PSO, G, feasible_vec, poss_val, random_val, plot_results
+
 
 
 def random_back(position: np.ndarray, velocity: np.ndarray)-> np.ndarray:
     ''' Takes a position and a velocity and returns a new position that
         meets demand & supply constraints '''
     vec = position + velocity
+    
     if feasible_vec(vec):
-        return vec    
+        return vec
+        
     else:
         new_pos = np.zeros(position.size)
         for i, _ in enumerate(new_pos):
             if poss_val(i, (int(position[i]+velocity[i])), new_pos):
                 new_pos[i] = int(position[i] + velocity[i])
             else:
-                r = random_val(vec=new_pos, index=i, graph=G)
+                r = random_val(vec=new_pos, index=i)
                 new_pos[i] = r
         
-        if feasible_vec(vec=new_pos):
-            return new_pos
-        else:
-            print(f'random_back() returned an unfeasible vector')
-
+        assert feasible_vec(vec=new_pos), "random_back() returned an unfeasible vector"  
+        return new_pos
+        
 
 
 @dataclass
@@ -52,7 +55,7 @@ def optimize():
 
     start = time.perf_counter()
 
-    iterations = 500
+    iterations = 200
 
     gbest_val_list  = []
     gbest_pos_list  = []

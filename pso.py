@@ -5,6 +5,10 @@ import random
 import joblib
 from dataclasses import dataclass, field
 from typing import List
+from numba import jit, njit
+import cProfile, pstats, io
+
+
 
 # Import data
 farms = joblib.load('farms_list')
@@ -18,6 +22,7 @@ G = joblib.load('supply_chain_graph')
 def get_total_supply(graph: nx.DiGraph) -> int:
     ''' Return the total number of eggs supplied by farms to dealer'''
     return np.sum([graph[farm]['Dealer']['quantity'] for farm in graph.predecessors('Dealer')])
+
 
 def get_demand(graph: nx.DiGraph) -> np.ndarray:
     ''' Gets a demand array from graph'''
@@ -50,21 +55,32 @@ def get_price_per_product(graph: nx.DiGraph) -> np.ndarray:
     return np.array([graph[p][c]['price'] for p in prods for c in graph.successors(p)])
 
 
+def get_supply_boxes(vec: np.ndarray) -> np.array:
+    ''' Returns an array with boxes of products '''
+    global prods, custs
+    return np.sum(vec.reshape(len(prods), len(custs)), axis=1)
+
+
+### Derived global variables
 supply = get_total_supply(G)
 demand = get_demand(G)
+prod_cap = np.array([G.nodes[p]['eggs_per_box'] for p in prods])
+mat_shape = (len(prods), len(custs))
 
 
 # Functions
+@jit(nopython=True)
 def feasible_vec(vec:np.ndarray) -> bool:
     '''Returns true if a vec meets demand & supply constraints'''
-    global demand, supply, prods, G
-    prod_cap = np.array([G.nodes[p]['eggs_per_box'] for p in prods])
-    mat = vec.reshape(len(prods), len(custs))
-    supply_check = np.sum(mat * prod_cap[:, None]) <= supply # Check for eggs
+    global demand, supply, prod_cap, mat_shape
+    # prod_cap = np.array([G.nodes[p]['eggs_per_box'] for p in prods])
+    mat = vec.reshape(mat_shape)
+    supply_check = np.sum(mat * np.expand_dims(prod_cap,axis=1)) <= supply # Check for eggs
     demand_check = np.all((vec <= demand) & (vec >= 0)) # Check boxes
     return demand_check and supply_check
 
 
+@jit(nopython=True)
 def poss_val(index:int, val:int, vec: np.ndarray):
     ''' Returns True if the 'val' being placed in 
         'index' position of 'vec' meets 'demand' and 'supply' 
@@ -74,34 +90,30 @@ def poss_val(index:int, val:int, vec: np.ndarray):
     return feasible_vec(vec_copy)
 
 
-def get_supply_boxes(vec: np.ndarray) -> np.array:
-    ''' Returns an array with boxes of products '''
-    global prods, custs
-    return np.sum(vec.reshape(len(prods), len(custs)), axis=1)
-
-
-def random_val(vec:np.ndarray, index: int, graph: nx.DiGraph) -> int:
+@jit(nopython=True)
+def random_val(vec:np.ndarray, index: int) -> np.int64:
     ''' Returns a random value that meets demand and supply constraints 
         vec: a vector in which the random value is to placed
         index: the index position in the vector for which the random value is needed
         graph: the supply chain graph '''
-    global demand, supply, prods, custs
+    global demand, supply, prod_cap, mat_shape
     
     if demand[index]==0:
         return 0
     else:
-        mat = vec.reshape(len(prods), len(custs))
-        prod_cap = np.array([graph.nodes[p]['eggs_per_box'] for p in prods])
-        
+        #ValueError: total size of new array must be unchanged
+        mat = vec.reshape(mat_shape)
+                
         # In-place of unravel index - gets the row, col index if reshaped to matrix
-        mat_index = np.arange(0, vec.size).reshape(len(prods), len(custs))
+        mat_index = np.arange(0, vec.size).reshape(mat_shape)
         row, col = np.where(mat_index == index)
         
-        alloc_supply = np.sum(mat * prod_cap[:, None])
+        # alloc_supply = np.sum(mat * prod_cap[:, None])
+        alloc_supply = np.sum(mat * np.expand_dims(prod_cap,axis=1))
         available_supply_eggs = supply - (alloc_supply - (vec[index]* prod_cap[row]))
-        available_supply_boxes = int(available_supply_eggs // prod_cap[row])
+        available_supply_boxes = np.floor((available_supply_eggs / prod_cap[row])).astype(np.int64)
         if  available_supply_boxes and demand[index] > 0:
-            return np.random.randint(min(available_supply_boxes, demand[index]))
+            return np.random.randint(np.minimum(available_supply_boxes.item(), demand[index].item()))
         else:
             return 0
 
@@ -109,12 +121,12 @@ def random_val(vec:np.ndarray, index: int, graph: nx.DiGraph) -> int:
 def random_initiate_vec() -> np.array:
     ''' Returns a vector in the same size of demand that meets demand 
         & supply constraints '''
-    global demand, G
+    global demand, G, prods, custs
     zero_vec = np.zeros(demand.size)
     indices = np.arange(0,demand.size)
     random.shuffle(indices)
     for i in indices:
-        r = random_val(zero_vec, i, G)
+        r = random_val(zero_vec, i)
         zero_vec[i]=r
     return zero_vec
 
@@ -148,6 +160,24 @@ def plot_results(gbest_vals, total_time):
     plt.show()
 
 
+def profile(fnc):
+    """ A decorator that uses cProfile to profile a function
+        Source: Sebastiaan Mathôt https://osf.io/upav8/
+    """
+    def inner(*args, **kwargs):
+        
+        pr = cProfile.Profile()
+        pr.enable()
+        retval = fnc(*args, **kwargs)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        return retval
+
+    return inner
 
 
 @dataclass

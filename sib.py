@@ -2,8 +2,9 @@ import numpy as np
 from dataclasses import dataclass
 import time
 from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, G, plot_results
+from numba import njit 
 
-
+# @njit
 def sib_mix(vec: np.ndarray, better_vec: np.ndarray)-> np.ndarray:
     ''' Takes 2 vectors and returns the mix of the two
             qb: a number of values that are to be replaced - from
@@ -12,7 +13,7 @@ def sib_mix(vec: np.ndarray, better_vec: np.ndarray)-> np.ndarray:
             differences between the two vectors sorted in descending order([::-1])
         '''
     mix_vec = vec.copy()
-    percent_to_replace = .1
+    percent_to_replace = 0.10
     qb = int(np.ceil(np.where(mix_vec!=better_vec,1,0).sum()*percent_to_replace))
     diff_index = np.argsort(abs(better_vec-mix_vec))[::-1]
     for _ in range(qb):
@@ -37,7 +38,7 @@ def random_jump(vec: np.ndarray) -> np.ndarray:
     nos_to_replace = int(percent_to_replace * non_zero_inds.size)
     inds = np.random.choice(non_zero_inds, nos_to_replace, replace=False)
     for i in inds:
-        new_vec[i] = random_val(vec=new_vec, index=i, graph=G)
+        new_vec[i] = random_val(vec=new_vec, index=i)
     
     assert feasible_vec(new_vec), 'random_jump() returned an unfeasible vector'
     return new_vec
@@ -66,11 +67,12 @@ class SIB(PSO):
             else:
                 particle['position'] = random_jump(particle['position'])
 
+
 def optimize():
 
     start = time.perf_counter()
 
-    iterations = 500
+    iterations = 200
 
     gbest_val_list  = []
     gbest_pos_list  = []

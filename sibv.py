@@ -20,13 +20,13 @@ def sibv_mix(position: np.ndarray, better_position: np.ndarray) -> np.ndarray:
             min_val = min(better_position[ind], position[ind])
             max_val = max(better_position[ind], position[ind])
             try:
-                r = np.random.randint(min_val, max_val)
-                if poss_val(index=ind, val=r, vec=new_pos):
-                    new_pos[ind]=r
+                r1 = np.random.randint(min_val, max_val)
+                if poss_val(index=ind, val=r1, vec=new_pos):
+                    new_pos[ind]=r1
             except ValueError:
-                r = random_val(vec=new_pos, index=ind, graph=G)
-                if poss_val(index=ind, val=r, vec=new_pos):
-                    new_pos[ind]=r
+                r2 = random_val(vec=new_pos, index=ind)
+                if poss_val(index=ind, val=r2, vec=new_pos):
+                    new_pos[ind]=r2
             else:
                 break
         
@@ -41,14 +41,13 @@ class SIBV(SIB):
             particle['mixwGB_val'] = calculate_profit(particle['mixwGB_pos'])
             particle['mixwLB_pos'] = sibv_mix(particle['position'], particle['lbest_pos'])
             particle['mixwLB_val'] = calculate_profit(particle['mixwLB_pos'])
-    
 
 
 def optimize():
 
     start = time.perf_counter()
 
-    iterations = 500
+    iterations = 200
 
     gbest_val_list  = []
     gbest_pos_list  = []
