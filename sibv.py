@@ -1,7 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
 import time
-from pso import random_val, poss_val, G, feasible_vec, calculate_profit, plot_results
+from pso import random_val, poss_val, feasible_vec, calculate_profit, plot_results
 from sib import SIB
 
 
@@ -32,6 +32,7 @@ def sibv_mix(position: np.ndarray, better_position: np.ndarray) -> np.ndarray:
         
     assert feasible_vec(new_pos), 'sibv_mix() returned unfeasible vector'  
     return new_pos
+    
     
 @dataclass
 class SIBV(SIB):

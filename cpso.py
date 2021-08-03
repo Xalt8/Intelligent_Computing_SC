@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import time
 from numba import njit
 import numba
-from pso import PSO, G, feasible_vec, poss_val, random_val, plot_results
+from pso import PSO, feasible_vec, poss_val, random_val, plot_results
 
 
 
@@ -55,7 +55,7 @@ def optimize():
 
     start = time.perf_counter()
 
-    iterations = 200
+    iterations = 50
 
     gbest_val_list  = []
     gbest_pos_list  = []

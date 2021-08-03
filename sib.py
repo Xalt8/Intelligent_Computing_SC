@@ -1,7 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
 import time
-from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, G, plot_results
+from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, plot_results
 from numba import njit 
 
 # @njit
@@ -15,7 +15,7 @@ def sib_mix(vec: np.ndarray, better_vec: np.ndarray)-> np.ndarray:
     mix_vec = vec.copy()
     percent_to_replace = 0.10
     qb = int(np.ceil(np.where(mix_vec!=better_vec,1,0).sum()*percent_to_replace))
-    diff_index = np.argsort(abs(better_vec-mix_vec))[::-1]
+    diff_index = np.argsort(abs(better_vec - mix_vec))[::-1]
     for _ in range(qb):
         for ind in diff_index:
             if poss_val(index=ind, val=better_vec[ind], vec=mix_vec):
@@ -31,7 +31,7 @@ def random_jump(vec: np.ndarray) -> np.ndarray:
     ''' Replaces a percentage of values from a vector with random values that
         meet demand and supply constraints
         non_zero_inds: index positions that have demand '''    
-    global demand, G
+    global demand
     new_vec = vec.copy()
     percent_to_replace = 0.40
     non_zero_inds = np.where(demand!=0)[0] # yeilds a tuple -> get the first value [0]
@@ -72,7 +72,7 @@ def optimize():
 
     start = time.perf_counter()
 
-    iterations = 200
+    iterations = 500
 
     gbest_val_list  = []
     gbest_pos_list  = []
