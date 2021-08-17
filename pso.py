@@ -11,72 +11,6 @@ import cProfile, pstats, io
 from graph import SupplyChain
 
 
-
-# # Import data
-# farms = joblib.load('farms_list')
-# custs = joblib.load('customer_list')
-# prods = joblib.load('product_list')
-# transport_cost_per_egg = joblib.load('transport_costs')
-# G = joblib.load('supply_chain_graph')
-
-
-# # Getters
-# def get_total_supply(graph: nx.DiGraph) -> int:
-#     ''' Return the total number of eggs supplied by farms to dealer'''
-#     return np.sum([graph[farm]['Dealer']['quantity'] for farm in graph.predecessors('Dealer')])
-
-
-# def get_demand(graph: nx.DiGraph) -> np.ndarray:
-#     ''' Gets a demand array from graph'''
-#     global prods
-#     return np.array([graph[p][cust]['demand'] for p in prods for cust in graph.successors(p)]).astype(np.int64)   
-
-
-# def get_transport_costs(vec: np.array, graph: nx.DiGraph) -> float:
-#     ''' Returns the total transport cost for a given array of quantities '''
-#     global prods, custs, transport_cost_per_egg
-#     prod_cap = np.array([graph.nodes[p]['eggs_per_box'] for p in prods])
-#     per_egg_costs =  np.array([transport_cost_per_egg[graph.nodes[c]['location']] for p in prods for c in G.successors(p)])
-#     per_egg_mat = per_egg_costs.reshape(len(prods), len(custs))
-#     mat = vec.reshape(len(prods), len(custs))
-#     return np.sum(mat * per_egg_mat * np.expand_dims(prod_cap,axis=1))
-
-
-# def get_supply_costs(graph: nx.DiGraph, vec: np.ndarray)-> float:
-#     ''' Gets the total cost of eggs supplied given a vector of product quantities'''
-#     global prods, custs
-#     avg_cost_per_egg = np.mean([graph[farm]['Dealer']['cost_per_egg'] for farm in graph.predecessors('Dealer')])
-#     mat = vec.reshape(len(prods), len(custs))
-#     prod_cap = np.array([graph.nodes[p]['eggs_per_box'] for p in prods])
-#     total_eggs = np.sum(mat * np.expand_dims(prod_cap,axis=1))
-#     return total_eggs * avg_cost_per_egg
-
-
-# def get_price_per_product(graph: nx.DiGraph) -> np.ndarray:
-#     ''' Returns the prices for the products '''
-#     return np.array([graph[p][c]['price'] for p in prods for c in graph.successors(p)])
-
-
-# def get_supply_boxes(vec: np.ndarray) -> np.array:
-#     ''' Returns an array with boxes of products '''
-#     global prods, custs
-#     return np.sum(vec.reshape(len(prods), len(custs)), axis=1)
-
-
-# def get_supplied_eggs(vec: np.ndarray)-> int:
-#     ''' Returns the number of eggs supplied to customers based on 
-#         quantity of boxes (vec) '''
-#     global prod_cap
-#     boxes = get_supply_boxes(vec)
-#     return np.sum([np.sum(box * pc) for box, pc in zip(boxes, prod_cap)])
-
-
-# ### Derived global variables
-# supply = get_total_supply(G)
-# demand = get_demand(G)
-# prod_cap = np.array([G.nodes[p]['eggs_per_box'] for p in prods])
-# mat_shape = (len(prods), len(custs))
-
 # import data
 xls = pd.ExcelFile('data.xlsx')
 demand_dict = pd.read_excel(xls, sheet_name='demand', index_col=0, usecols="A:D", nrows=33).T.to_dict('index')  
@@ -87,14 +21,32 @@ products_dict = {'P1': 6, 'P2': 10, 'P3': 12}
 transport_cost_per_egg = {'North':0.10, 'South':0.15}
 
 
-sc = SupplyChain(farms=farms_dict, customers=custs, products=products_dict, 
-                demand=demand_dict, prices=prices_dict, transport=transport_cost_per_egg)
 
 
-demand = sc.get_demand_vec()
-supply = sc.get_total_supply()
-dims = (len(sc.products), len(sc.customers))
-prod_cap = np.array([sc.graph.nodes[p]['eggs_per_box'] for p in sc.products])
+# Supply chain with equilibrium demand
+# sc = SupplyChain(farms=farms_dict, customers=custs, products=products_dict, 
+#                 demand=demand_dict, prices=prices_dict, transport=transport_cost_per_egg)
+
+demand_df = pd.read_excel(xls, sheet_name='demand', index_col=0, usecols="A:D", nrows=33).T
+
+## Reduced demand 
+reduced_demand = demand_df.apply(lambda x:x*.90).astype(np.int64).to_dict('index')
+# Supply chain with reduced demand
+# rd = SupplyChain(farms=farms_dict, customers=custs, products=products_dict, 
+#                 demand=reduced_demand, prices=prices_dict, transport=transport_cost_per_egg)
+
+
+reduced_supply = demand_df.apply(lambda x:x*1.10).astype(np.int64).to_dict('index')
+
+rs = SupplyChain(farms=farms_dict, customers=custs, products=products_dict, 
+                demand=reduced_supply, prices=prices_dict, transport=transport_cost_per_egg)
+
+
+
+
+## GLOBAL VARIABLES
+demand, supply, dims, prod_cap = rs.get_global_variables()
+
 
 
 # Functions
@@ -130,7 +82,6 @@ def random_val(vec:np.ndarray, index: int) -> np.int64:
     if demand[index]==0:
         return 0
     else:
-        #ValueError: total size of new array must be unchanged
         mat = vec.reshape(dims)
                 
         # In-place of unravel index - gets the row, col index if reshaped to matrix
@@ -141,7 +92,7 @@ def random_val(vec:np.ndarray, index: int) -> np.int64:
         available_supply_eggs = supply - (alloc_supply - (vec[index]* prod_cap[row]))
         available_supply_boxes = np.floor((available_supply_eggs / prod_cap[row])).astype(np.int64)
         if  available_supply_boxes and demand[index] > 0:
-            return np.random.randint(np.minimum(available_supply_boxes.item(), demand[index].item()))
+            return np.random.randint(0, np.minimum(available_supply_boxes.item(), demand[index].item()))
         else:
             return 0
 
@@ -156,18 +107,20 @@ def random_initiate_vec() -> np.array:
     for i in indices:
         r = random_val(zero_vec, i)
         zero_vec[i]=r
+    
+    assert feasible_vec(zero_vec), 'random_initiate_vec() returned an unfeasible vector'
     return zero_vec
 
 
-def calculate_profit(vec: np.ndarray) -> float:
+def calculate_profit(vec: np.ndarray, sup_cha:SupplyChain) -> float:
     ''' Returns the total profit from a given quantities of products '''
-    global sc
-    cost_of_eggs = sc.get_supply_costs(vec=vec) # -> float
-    prices = sc.get_price_per_product() # -> np.ndarray 
+    
+    cost_of_eggs = sup_cha.get_supply_costs(vec=vec) # -> float
+    prices = sup_cha.get_price_per_product() # -> np.ndarray 
     sales = np.sum(prices * vec) # -> float
-    transport_cost = sc.get_transport_cost(vec) # -> float
+    transport_cost = sup_cha.get_transport_cost(vec) # -> float
     total_cost = transport_cost + cost_of_eggs
-    profit = sales - total_cost
+    profit = np.round((sales - total_cost), decimals=3)
     return profit  
 
 
@@ -208,6 +161,57 @@ def profile(fnc):
     return inner
 
 
+def already_there(list_of_particles: list, new_particle: np.ndarray):
+    ''' Checks to see if a new_particle is present in list_of_particles'''
+    return np.any([np.array_equal(new_particle, particle) for particle in list_of_particles])
+
+
+def generate_particle_list(num_of_particles:int)-> list:
+    ''' Generates a list of unique particles'''
+    particle_list = []
+    while len(particle_list) < num_of_particles:
+        vec = random_initiate_vec()
+        if not already_there(particle_list, vec):
+            particle_list.append(vec)
+        else:
+            print("Already there!")
+    return particle_list
+
+
+def split_list(particle_list:list, num_particles:int) -> list:
+    ''' Takes a list of particles and splits it by 
+        the num_particles returns a list of lists'''
+    return [particle_list[i:i+num_particles] for i in range(0, len(particle_list), num_particles)]
+
+
+def make_result_matrix(data) -> pd.DataFrame:
+    ''' Takes the results data and converts it into a 
+        DataFrame'''
+    # 1 for time float + len of data for gbest_vals
+    size = (1 + len(data[0][0]), len(data))
+    arr = np.zeros(size)
+    for i, d in enumerate(data):
+        arr[:len(d[0]),i] = d[0] # put gbest_vals 
+        arr[-1,:] = d[1] # put time data in the last row
+    df = pd.DataFrame(arr, columns =[str(i)+"_run" for i in range(len(data))])
+    as_list = df.index.tolist()
+    as_list[-1] = "Time" # Make the index value of last row to time
+    df.index = as_list
+    return df
+
+
+def experiment(optimise_func, split_particles_list:list, experiment_name:str):
+    ''' Applies an optimisation function to all particles (init_pos) in split_particle_list  
+        Creates a dataframe of the results and saves it to an excel file. 
+    '''
+    results = [optimise_func(init_pos) for init_pos in split_particles_list]
+
+    experiment_results = make_result_matrix(results)
+    experiment_results.to_excel(f"experiment_result_{experiment_name}.xlsx")
+    return experiment_results
+
+
+
 @dataclass
 class PSO:
     num_particles: int = 20
@@ -226,7 +230,14 @@ class PSO:
             particle['pbest_val'] = -np.Inf
             particle['velocity'] = np.zeros(particle['position'].size)
     
+
+    def initialise_with_particle_list(self, particle_pos_list):
+        for particle, pos in zip(self.particles, particle_pos_list):
+            particle['position'] = pos
+            particle['pbest_val'] = -np.Inf
+            particle['velocity'] = np.zeros(particle['position'].size)
     
+
     def pick_informants_ring_topology(self):
         for index, particle in enumerate(self.particles):
             particle['informants'] = []
@@ -238,7 +249,7 @@ class PSO:
 
     def calculate_fitness(self):
         for particle in self.particles:
-            particle['profit'] = calculate_profit(particle['position'])
+            particle['profit'] = calculate_profit(particle['position'], sup_cha=rs)
 
     
     def set_pbest(self):
@@ -256,11 +267,52 @@ class PSO:
                     informant['lbest_pos'] = particle['pbest_pos']
     
     
+    # def set_gbest(self):
+    #     for particle in self.particles:
+    #         if particle['lbest_val'] >= self.gbest_val:
+    #             self.gbest_val = particle['lbest_val']
+    #             self.gbest_pos = particle['lbest_pos']
+    
     def set_gbest(self):
-        for particle in self.particles:
+        for i, particle in enumerate(self.particles):
             if particle['lbest_val'] >= self.gbest_val:
                 self.gbest_val = particle['lbest_val']
                 self.gbest_pos = particle['lbest_pos']
+                self.gbest_particle_index = i # Index number of the gbest particle
+
+
+    def set_overwrite_particles_list(self):
+        ''' Puts the index numbers of the first half of particles in a swarm
+            in a list except for the gbest particle index '''
+        self.overwrite_particles_list = [
+            j for j in range(int(self.num_particles/2)) 
+                if j!=self.gbest_particle_index]
+    
+
+    def overwrite_particle(self, vec:np.ndarray):
+        ''' Replaces a randomly chosen particle's position with a given vector'''
+        particle_to_overwrite = random.choice(self.overwrite_particles_list)
+        self.particles[particle_to_overwrite]['position'] = vec
+
+    
+
+
+
+def get_particle_list(joblib_lists:str, pso_alg:PSO, sup_chn:SupplyChain)-> list:
+    particle_list = joblib.load(joblib_lists)
+    split_particles_list = split_list(particle_list, pso_alg.num_particles)    
+    for list_of_particles in split_particles_list:
+        list_of_particles.pop()
+        list_of_particles.append(sup_chn.fill_order())
+    
+    return split_particles_list
+
+
+
+split_particles_list = get_particle_list(joblib_lists='particle_list3', pso_alg=PSO, sup_chn=rs)    
+    
+# particle_list = joblib.load('particle_list3')
+# split_particles_list = split_list(particle_list, PSO.num_particles)
 
 
 

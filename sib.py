@@ -1,10 +1,10 @@
 import numpy as np
 from dataclasses import dataclass
 import time
-from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, plot_results
+from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, plot_results, experiment, rs, split_particles_list
 from numba import njit 
 
-# @njit
+@njit
 def sib_mix(vec: np.ndarray, better_vec: np.ndarray)-> np.ndarray:
     ''' Takes 2 vectors and returns the mix of the two
             qb: a number of values that are to be replaced - from
@@ -15,7 +15,7 @@ def sib_mix(vec: np.ndarray, better_vec: np.ndarray)-> np.ndarray:
     mix_vec = vec.copy()
     percent_to_replace = 0.10
     qb = int(np.ceil(np.where(mix_vec!=better_vec,1,0).sum()*percent_to_replace))
-    diff_index = np.argsort(abs(better_vec - mix_vec))[::-1]
+    diff_index = np.argsort(np.absolute(better_vec - mix_vec))[::-1]
     for _ in range(qb):
         for ind in diff_index:
             if poss_val(index=ind, val=better_vec[ind], vec=mix_vec):
@@ -51,9 +51,9 @@ class SIB(PSO):
     def mix(self):
         for particle in self.particles:
             particle['mixwGB_pos'] = sib_mix(particle['position'], self.gbest_pos)
-            particle['mixwGB_val'] = calculate_profit(particle['mixwGB_pos'])
+            particle['mixwGB_val'] = calculate_profit(particle['mixwGB_pos'], sup_cha=rs)
             particle['mixwLB_pos'] = sib_mix(particle['position'], particle['lbest_pos'])
-            particle['mixwLB_val'] = calculate_profit(particle['mixwLB_pos'])
+            particle['mixwLB_val'] = calculate_profit(particle['mixwLB_pos'], sup_cha=rs)
     
 
     def move(self):
@@ -68,7 +68,7 @@ class SIB(PSO):
                 particle['position'] = random_jump(particle['position'])
 
 
-def optimize():
+def optimize(init_pos):
 
     start = time.perf_counter()
 
@@ -78,11 +78,13 @@ def optimize():
     gbest_pos_list  = []
 
     swarm = SIB()
-    swarm.initialise()
+    swarm.initialise_with_particle_list(init_pos)
     swarm.pick_informants_ring_topology()
-
+    
+    
     for i in range(iterations):
         swarm.calculate_fitness()
+        # print([particle['profit']for particle in swarm.particles]) 
         swarm.set_pbest()
         swarm.set_lbest()
         swarm.set_gbest()  
@@ -105,5 +107,10 @@ def optimize():
 
 if __name__ == '__main__':
     
-    gbest_vals, total_time = optimize()
-    plot_results(gbest_vals, total_time)
+    # print([max([calculate_profit(vec=parts, sup_cha=rs) for parts in spl]) for spl in split_particles_list]) 
+
+    
+    experiment(optimize, split_particles_list, "sib_reduced_supply2")
+
+    # gbest_vals, total_time = optimize()
+    # plot_results(gbest_vals, total_time)

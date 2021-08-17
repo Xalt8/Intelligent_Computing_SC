@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import time
 from numba import njit
 import numba
-from pso import PSO, feasible_vec, poss_val, random_val, plot_results
-
+from pso import PSO, feasible_vec, poss_val, random_val, plot_results, experiment, split_particles_list
+from typing import List
 
 
 def random_back(position: np.ndarray, velocity: np.ndarray)-> np.ndarray:
@@ -51,17 +51,17 @@ class CPSO(PSO):
             particle['position'] = np.floor(new_pos)
 
 
-def optimize():
+def optimize(init_pos:List[np.ndarray]):
 
     start = time.perf_counter()
 
-    iterations = 50
+    iterations = 500
 
     gbest_val_list  = []
     gbest_pos_list  = []
 
     swarm = CPSO()
-    swarm.initialise()
+    swarm.initialise_with_particle_list(init_pos)
     swarm.pick_informants_ring_topology()
 
     for i in range(iterations):
@@ -87,5 +87,7 @@ def optimize():
 
 if __name__ == '__main__':
     
-    gbest_vals, total_time = optimize()
-    plot_results(gbest_vals, total_time)
+    experiment(optimize, split_particles_list, "cpso_reduced_supply2")
+
+    # gbest_vals, total_time = optimize()
+    # plot_results(gbest_vals, total_time)
