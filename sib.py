@@ -33,7 +33,7 @@ def random_jump(vec: np.ndarray) -> np.ndarray:
         non_zero_inds: index positions that have demand '''    
     global demand
     new_vec = vec.copy()
-    percent_to_replace = 0.40
+    percent_to_replace = 0.10
     non_zero_inds = np.where(demand!=0)[0] # yeilds a tuple -> get the first value [0]
     nos_to_replace = int(percent_to_replace * non_zero_inds.size)
     inds = np.random.choice(non_zero_inds, nos_to_replace, replace=False)
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     # print([max([calculate_profit(vec=parts, sup_cha=rs) for parts in spl]) for spl in split_particles_list]) 
 
     
-    experiment(optimize, split_particles_list, "sib_reduced_supply2")
+    experiment(optimize, split_particles_list, "sib_reduced_supply_mix10_jump10")
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)

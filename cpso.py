@@ -87,7 +87,7 @@ def optimize(init_pos:List[np.ndarray]):
 
 if __name__ == '__main__':
     
-    experiment(optimize, split_particles_list, "cpso_reduced_supply2")
+    experiment(optimize, split_particles_list, "cpso_reduced_supply_nojit")
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)

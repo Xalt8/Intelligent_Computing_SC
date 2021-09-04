@@ -139,7 +139,6 @@ class SupplyChain():
         return {product:eggs for product, eggs in zip(self.products.keys(), eggs_qty)}
 
 
-
     def get_ordered_indices(self) -> np.ndarray:
         '''Retuns a list of index positions with the largest customers by demand first'''
         dem_mat = np.array([
@@ -192,7 +191,6 @@ class SupplyChain():
 
     def fill_order(self) -> np.ndarray:
         ''' Fill order of largers customers first '''
-        
         index_order = self.get_big_customer_indices() # -> customer indices of largest customers
         vec = np.zeros(len(self.products) * len(self.customers))
         for io in index_order:
@@ -208,6 +206,7 @@ class SupplyChain():
         dims = (len(self.products), len(self.customers))
         prod_cap = np.array([self.graph.nodes[p]['eggs_per_box'] for p in self.products])
         return demand, supply, dims, prod_cap
+
 
 if __name__ =='__main__':
     pass
