@@ -145,17 +145,17 @@ class SupplyChain():
         self.set_eggs_packs()
 
     # Get demand values from nodes
-    # def get_demand_vec(self) -> np.ndarray:
-    #     ''' Gets the demand node attributes from the graph as a dict 
-    #         converts the dict's values to an array'''
-    #     return np.fromiter(nx.get_node_attributes(self.graph,'demand').values(), dtype=np.int64)
-
-    # Get demand value from edges
     def get_demand_vec(self) -> np.ndarray:
-        ''' Returns an array with the demand values between cprod and customer edges'''
-        return np.array([self.graph[cprod][customer]['demand'] 
-        for customer in self.customers.keys() 
-        for cprod in self.graph.predecessors(customer)]).astype(np.int64)
+        ''' Gets the demand node attributes from the graph as a dict 
+            converts the dict's values to an array'''
+        return np.fromiter(nx.get_node_attributes(self.graph,'demand').values(), dtype=np.int64)
+
+    # # Get demand value from edges
+    # def get_demand_vec(self) -> np.ndarray:
+    #     ''' Returns an array with the demand values between cprod and customer edges'''
+    #     return np.array([self.graph[cprod][customer]['demand'] 
+    #     for customer in self.customers.keys() 
+    #     for cprod in self.graph.predecessors(customer)]).astype(np.int64)
     
 
     def get_price_per_product(self) -> np.ndarray:
@@ -197,7 +197,7 @@ class SupplyChain():
     #                 costs.append(transport_cost)
     #     return np.array(costs).astype(np.float16)
     
-    def get_transport_cost(self):
+    def get_transport_cost(self) -> np.ndarray:
         ''' Returns an array with the transport costs of the fprod to cprod'''
         transport_costs = []
         for farm in self.farms.keys():
@@ -206,16 +206,67 @@ class SupplyChain():
                     transport_costs.append(self.graph[fprod][cprod]['transport_cost'])
         return np.array(transport_costs).astype(np.float16)
 
+    def get_optimising_tuples(self) -> list:
+        ''' Return the tuples of fprod & cprod that need to be optimised'''
+        return [(fprod, cprod) for farm in self.farms.keys() 
+                for fprod in self.graph.successors(farm) 
+                for cprod in self.graph.successors(fprod)]
+    
+    def get_indices_dict(self) -> dict:
+        ''' Return a dict with the optimising tuples as keys and 
+            their index position in the list of tuples as value '''
+        return {item: idx for idx, item in enumerate(self.get_optimising_tuples())}
+
+    def get_indices(self, fprod_cprod:str):
+        ''' Takes an fprod or cprod value and returns all unique values (index) 
+            from a dict of index values '''
+        index_dict= self.get_indices_dict() 
+        index_values = set()
+        for i in range(len(index_dict)):
+            for fprod, cprod in index_dict.keys():
+                if fprod_cprod == fprod or fprod_cprod == cprod:
+                    index_values.add(index_dict.get((fprod, cprod)))
+        return list(index_values)
+    
+    def get_supply_check_variables(self) -> tuple:
+        farm_wise_fprod_list = [[fprod for fprod in self.graph.successors(farm)] 
+                                for farm in self.farms.keys()]
+        packs = np.array([self.graph.nodes[fprod]['eggs_per_pack'] 
+                            for farms in farm_wise_fprod_list for fprod in farms])
+        lens = [len(farm) for farm in farm_wise_fprod_list]
+        split_list = np.cumsum(lens)
+        all_inds = np.vstack([self.get_indices(fprod) 
+                    for farm in self.farms.keys() 
+                    for fprod in self.graph.successors(farm)])    
+        return all_inds, split_list, packs
+
+    def get_demand_check_variables(self) -> tuple:
+        ''' Return a list of index position where to split the list of all index values of cprods
+        - lens: lengths of the list of index values for cprods
+        - split_list: a cumulative sum of index values of the lengths
+        - all_inds: all index values of cprods in a single array '''
+        lens = np.array([len(self.get_indices(cprod)) 
+                    for cust in self.customers.keys() 
+                    for cprod in self.graph.predecessors(cust)]).astype(np.int64)
+        split_list = np.cumsum(lens)
+
+        all_inds = np.concatenate([self.get_indices(cprod) 
+                    for customer in self.customers.keys() 
+                    for cprod in self.graph.predecessors(customer)])
+        return split_list, all_inds
 
     def split_eggs_supply_randomly(self) -> list:
-        ''' Retuns a list of arrays with the total quantity supplied distributed among the total number of products '''
+        ''' Retuns a list of arrays with the total quantity supplied randomly distributed 
+            among the total number of products '''
         dims = np.sum([len(self.farms[farm]['Products']) for farm in self.farms.keys()])
         z_vec = np.zeros(dims)
         split_indices = np.cumsum([len(self.farms[farm]['Products']) for farm in self.farms.keys()])
         split_vec = np.split(z_vec, split_indices)[:-1]  # Pop the last one -> its empty
         return [sum_to_num(supply, len(sv)) for sv, supply in zip(split_vec, self.get_eggs_supplied())]
 
-    def pack_random_eggs(self) -> list:
+    def pack_random_eggs(self) -> np.ndarray:
+        ''' For every fprod it packs the available supply of eggs which have been
+            split randomly across the fprods'''
         packs = []
         fprods = [self.farms[farm]['Products'] for farm in self.farms.keys()]
         for fprod, randegg in zip(fprods, self.split_eggs_supply_randomly()):
@@ -223,9 +274,12 @@ class SupplyChain():
                 packs.append(np.floor(re/self.products[fp]))
         return np.array(packs).astype(np.int64)
 
-if __name__ =='__main__':
-    
-    sc = SupplyChain(farms=farms_dict, customers=custs, 
+
+sc = SupplyChain(farms=farms_dict, customers=custs, 
     products=products_dict, demand=demand_dict, 
     prices=prices_dict, transport=transport_cost_per_egg)
 
+
+if __name__ =='__main__':
+    pass    
+    
