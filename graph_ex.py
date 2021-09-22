@@ -61,17 +61,18 @@ class SupplyChain():
     #             self.graph[customer+"_"+product][customer]['demand'] = self.demand[customer][product]
 
     # Buy prices on nodes
-    # def set_buying_prices(self):
-    #     ''' Adds node attribute -> price and fills it with price values from dict'''
-    #     for customer in self.customers.keys():
-    #         for product in self.products.keys():
-    #             self.graph.nodes[customer + "_" + product]['price'] = self.prices[customer][product]
-    
     def set_buying_prices(self):
-        ''' Set the buying price on the edge between cprod and customer node'''
+        ''' Adds node attribute -> price and fills it with price values from dict'''
         for customer in self.customers.keys():
             for product in self.products.keys():
-                self.graph[customer+"_"+product][customer]['price'] = self.prices[customer][product]
+                self.graph.nodes[customer + "_" + product]['price'] = self.prices[customer][product]
+    
+    # Buy price on edge between cprod and customer
+    # def set_buying_prices(self):
+    #     ''' Set the buying price on the edge between cprod and customer node'''
+    #     for customer in self.customers.keys():
+    #         for product in self.products.keys():
+    #             self.graph[customer + "_" + product][customer]['price'] = self.prices[customer][product]
 
 
     def set_supply_quantity(self):
@@ -159,7 +160,14 @@ class SupplyChain():
     
 
     def get_price_per_product(self) -> np.ndarray:
-        return np.fromiter(nx.get_node_attributes(self.graph,'price').values(), dtype=np.float64)
+    #     return np.fromiter(nx.get_node_attributes(self.graph,'price').values(), dtype=np.float64)
+        prices = []
+        for farm in self.farms.keys():
+            for fprod in self.graph.successors(farm):
+                for cprod in self.graph.successors(fprod):
+                    prices.append(self.graph.nodes[cprod]['price'])
+        return np.array(prices).astype(np.float64)
+
 
     def get_eggs_supplied(self) -> np.ndarray:
         return np.fromiter(nx.get_node_attributes(self.graph,'eggs_supply').values(), dtype=np.int64)
@@ -253,7 +261,19 @@ class SupplyChain():
         all_inds = np.concatenate([self.get_indices(cprod) 
                     for customer in self.customers.keys() 
                     for cprod in self.graph.predecessors(customer)])
-        return split_list, all_inds
+        return all_inds, split_list
+    
+    def get_non_zero_demand_indices(self) -> np.ndarray:
+        ''' Gets the index positions where there is demand'''
+        index_dict = self.get_indices_dict()
+        non_zero_indices = []
+        for customer in sc.customers.keys():
+            for cprod in sc.graph.predecessors(customer):
+                for fprod in sc.graph.predecessors(cprod):
+                    if sc.graph.nodes[cprod]['demand']!=0:
+                        non_zero_indices.append(index_dict.get((fprod, cprod), -1))
+        return np.array(non_zero_indices)
+
 
     def split_eggs_supply_randomly(self) -> list:
         ''' Retuns a list of arrays with the total quantity supplied randomly distributed 

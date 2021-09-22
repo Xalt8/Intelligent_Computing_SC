@@ -2,8 +2,8 @@ import numpy as np
 from dataclasses import dataclass
 import time
 from pso import random_val, poss_val, feasible_vec, calculate_profit, plot_results, experiment, split_particles_list, rs
-from sib import SIB
-
+from sib_ex import SIB
+# from pso_ex import PSO, feasible_vec, poss_val, random_val, plot_results, calculate_profit, non_zero_inds
 
 def sibv_mix(position: np.ndarray, better_position: np.ndarray) -> np.ndarray:
     ''' Returns a vector array that is closer to an array with better fitness. 
@@ -12,7 +12,7 @@ def sibv_mix(position: np.ndarray, better_position: np.ndarray) -> np.ndarray:
         else a randomly chosen value between the position and better_position is selected.'''
     
     new_pos = position.copy()
-    percent_to_replace = 0.05
+    percent_to_replace = 0.10
     qb = int(np.ceil(np.where(position!=better_position,1,0).sum()*percent_to_replace))
     diff_index = np.argsort(np.absolute(better_position-position))[::-1]
     for _ in range(qb):
@@ -44,17 +44,18 @@ class SIBV(SIB):
             particle['mixwLB_val'] = calculate_profit(particle['mixwLB_pos'], sup_cha=rs)
 
 
-def optimize(init_pos):
+def optimize():
 
     start = time.perf_counter()
 
-    iterations = 500
+    iterations = 50
 
     gbest_val_list  = []
     gbest_pos_list  = []
 
     swarm = SIBV()
-    swarm.initialise_with_particle_list(init_pos)
+    # swarm.initialise_with_particle_list(init_pos)
+    swarm.initialise()
     swarm.pick_informants_ring_topology()
 
     for i in range(iterations):
@@ -84,8 +85,8 @@ if __name__ == '__main__':
     # gbest_vals, time_taken = optimize(split_particles_list[0])
     # print(time_taken)
 
-    experiment(optimize, split_particles_list, "sibv_reduced_supply_mix5_jump20")
+    # experiment(optimize, split_particles_list, "sibv_reduced_supply_mix5_jump20")
 
 
-    # gbest_vals, total_time = optimize()
-    # plot_results(gbest_vals, total_time)
+    gbest_vals, total_time = optimize()
+    plot_results(gbest_vals, total_time)

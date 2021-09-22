@@ -1,7 +1,9 @@
 import numpy as np
 from dataclasses import dataclass
 import time
-from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, plot_results, experiment, rs, split_particles_list
+# from pso import PSO, calculate_profit, poss_val, feasible_vec, random_val, demand, plot_results, experiment, rs, split_particles_list
+from pso_ex import PSO, feasible_vec, poss_val, random_val, plot_results, calculate_profit
+
 from numba import njit 
 
 @njit

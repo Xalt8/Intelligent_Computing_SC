@@ -3,8 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 from dataclasses import dataclass, field
-from numba import njit
+from numba import njit, jit
 from graph_ex import sc, sum_to_num
+import joblib
 
 
 # Global variables
@@ -12,6 +13,7 @@ demand_indices, split_list = sc.get_demand_check_variables()
 sup_indices, sup_split_list, sup_packs = sc.get_supply_check_variables()
 eggs_supply = sc.get_eggs_supplied()
 demand = sc.get_demand_vec()
+non_zero_inds = sc.get_non_zero_demand_indices()
 
 
 # Functions
@@ -60,12 +62,13 @@ def get_available_demand(vec:np.ndarray, index:int) -> int:
             vec_cprod = np.array([vec[i] for i in cprod_indices], dtype=np.int64)
             
             available_demand = dem - (np.sum(vec_cprod) - vec_cprod[np.where(cprod_indices==index)])
-            avail_demand = np.maximum(0, available_demand)[0] # Don't return negative demand
+            avail_demand = np.maximum(0, available_demand)[0] # Don't return negative demand & convert array to int -> [0]
     return avail_demand
 
 
 @njit
 def get_availble_supply(vec:np.ndarray, index:int) -> int:
+    ''' Returns the total available supply for a given index position in an array'''
     global sup_indices, sup_split_list, sup_packs, eggs_supply
     
     sup_inices_split = np.split(sup_indices, sup_split_list)
@@ -82,15 +85,19 @@ def get_availble_supply(vec:np.ndarray, index:int) -> int:
     avail_supply = (available_eggs/sup_packs_split[loc][row]).astype(np.int64)
 
 
-    return np.maximum(0, avail_supply)
+    return np.maximum(0, avail_supply)[0] # Convert array to int -> [0]
 
 
-@njit
+@jit(nopython=True)
 def random_val(vec:np.ndarray, index: int) -> np.int64:
+    ''' Returns a random value that meets demand and supply constraints'''
     available_supply = get_availble_supply(vec=vec, index=index)
     available_demand = get_available_demand(vec=vec, index=index)
     
-    return np.random.randint(0, np.minimum(available_demand, available_supply))
+    if available_supply and available_demand > 0:
+        return np.random.randint(0, np.minimum(available_demand, available_supply))
+    else: 
+        return 0
 
 
 def random_instantiate_vec():
@@ -114,6 +121,18 @@ def random_instantiate_vec():
     return zero_vec
 
 
+def calculate_profit(vec:np.ndarray):
+    global sc
+    transport_costs = np.sum(vec * sc.get_transport_cost())
+    supply_cost = np.sum(vec * sc.get_supply_costs())
+    prices = sc.get_price_per_product()
+    sales = np.sum(prices * vec)        
+    total_cost = transport_costs + supply_cost
+    profit = np.round((sales - total_cost), decimals=3)
+    return profit
+
+
+
 
 def plot_results(gbest_vals, total_time):
     _, ax = plt.subplots() 
@@ -134,6 +153,37 @@ def plot_results(gbest_vals, total_time):
     plt.show()
 
 
+def split_particle_list(particle_list:list, num_particles:int) -> list:
+    ''' Takes a list of particles and splits it by 
+        the num_particles returns a list of lists'''
+    return [particle_list[i:i+num_particles] for i in range(0, len(particle_list), num_particles)]
+
+
+def make_result_matrix(data) -> pd.DataFrame:
+    ''' Takes the results data and converts it into a 
+        DataFrame'''
+    # 1 for time float + len of data for gbest_vals
+    size = (1 + len(data[0][0]), len(data))
+    arr = np.zeros(size)
+    for i, d in enumerate(data):
+        arr[:len(d[0]),i] = d[0] # put gbest_vals 
+        arr[-1,:] = d[1] # put time data in the last row
+    df = pd.DataFrame(arr, columns =[str(i)+"_run" for i in range(len(data))])
+    as_list = df.index.tolist()
+    as_list[-1] = "Time" # Make the index value of last row to time
+    df.index = as_list
+    return df
+
+def experiment(optimise_func, split_particles_list:list, experiment_name:str):
+    ''' Applies an optimisation function to all particles (init_pos) in split_particle_list  
+        Creates a dataframe of the results and saves it to an excel file. 
+    '''
+    results = [optimise_func(init_pos) for init_pos in split_particles_list]
+
+    experiment_results = make_result_matrix(results)
+    experiment_results.to_excel(f"experiment_result_{experiment_name}.xlsx")
+    return experiment_results
+
 
 
 @dataclass
@@ -150,7 +200,7 @@ class PSO:
 
     def initialise(self):
         for particle in self.particles:
-            particle['position'] = random_initiate_vec()
+            particle['position'] = random_instantiate_vec()
             particle['pbest_val'] = -np.Inf
             particle['velocity'] = np.zeros(particle['position'].size)
     
@@ -173,7 +223,7 @@ class PSO:
 
     def calculate_fitness(self):
         for particle in self.particles:
-            particle['profit'] = calculate_profit(particle['position'], sup_cha=rs)
+            particle['profit'] = calculate_profit(particle['position'])
 
     
     def set_pbest(self):
@@ -197,8 +247,10 @@ class PSO:
                 self.gbest_val = particle['lbest_val']
                 self.gbest_pos = particle['lbest_pos']
     
-    
+
+particle_list = joblib.load('particle_list')
+split_particles_list = split_particle_list(particle_list, PSO.num_particles)    
 
 
 if __name__ =='__main__':
-    random_instantiate_vec()
+    pass
