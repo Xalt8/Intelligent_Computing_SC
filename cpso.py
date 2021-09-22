@@ -3,30 +3,30 @@ from dataclasses import dataclass
 import time
 from numba import njit
 import numba
-from pso import PSO, feasible_vec, poss_val, random_val, plot_results, experiment, split_particles_list
-from typing import List
+# from pso import PSO, feasible_vec, poss_val, random_val, plot_results, experiment, split_particles_list
+from pso_ex import PSO, feasible_vec, poss_val, random_val, plot_results, experiment, split_particles_list
 
 
+@njit
 def random_back(position: np.ndarray, velocity: np.ndarray)-> np.ndarray:
-    ''' Takes a position and a velocity and returns a new position that
-        meets demand & supply constraints '''
-    vec = position + velocity
-    
-    if feasible_vec(vec):
-        return vec
+        ''' Takes a position and a velocity and returns a new position that
+            meets demand & supply constraints '''
+        vec = position + velocity
         
-    else:
-        new_pos = np.zeros(position.size)
-        for i, _ in enumerate(new_pos):
-            if poss_val(i, (int(position[i]+velocity[i])), new_pos):
-                new_pos[i] = int(position[i] + velocity[i])
-            else:
-                r = random_val(vec=new_pos, index=i)
-                new_pos[i] = r
-        
-        assert feasible_vec(vec=new_pos), "random_back() returned an unfeasible vector"  
-        return new_pos
-        
+        if feasible_vec(vec):
+            return vec
+            
+        else:
+            new_pos = np.zeros(position.size)
+            for i, _ in enumerate(new_pos):
+                if poss_val(index = i, val=(int(position[i]+velocity[i])), vec=new_pos):
+                    new_pos[i] = int(position[i] + velocity[i])
+                else:
+                    r = random_val(vec=new_pos, index=i)
+                    new_pos[i] = r
+            
+            assert feasible_vec(vec=new_pos), "random_back() returned an unfeasible vector"  
+            return new_pos
 
 
 @dataclass
@@ -44,14 +44,14 @@ class CPSO(PSO):
             new_velocity = X*(particle['velocity'] + cognitive + informers)
             particle['velocity'] = new_velocity
     
-
+    
     def move_random_back(self):
         for particle in self.particles:
             new_pos = random_back(particle['position'], particle['velocity'])
             particle['position'] = np.floor(new_pos)
 
 
-def optimize(init_pos:List[np.ndarray]):
+def optimize(init_pos):
 
     start = time.perf_counter()
 
@@ -62,6 +62,7 @@ def optimize(init_pos:List[np.ndarray]):
 
     swarm = CPSO()
     swarm.initialise_with_particle_list(init_pos)
+    # swarm.initialise()
     swarm.pick_informants_ring_topology()
 
     for i in range(iterations):
@@ -87,7 +88,7 @@ def optimize(init_pos:List[np.ndarray]):
 
 if __name__ == '__main__':
     
-    experiment(optimize, split_particles_list, "cpso_reduced_supply_nojit")
+    experiment(optimise_func=optimize, split_particles_list=split_particles_list[:2], experiment_name='cpso_ex_test')
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)
