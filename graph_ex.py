@@ -188,7 +188,7 @@ class SupplyChain():
         for farm in self.farms.keys():
             for fprod in self.graph.successors(farm):
                 for cprod in self.graph.successors(fprod):
-                    supply_costs.append(self.graph[fprod][cprod]['cost_per_egg'])
+                    supply_costs.append(self.graph[fprod][cprod]['cost_per_egg'] * self.graph.nodes[fprod]['eggs_per_pack'])
         return np.array(supply_costs).astype(np.float64)
 
     # def get_transport_cost(self):
@@ -211,7 +211,7 @@ class SupplyChain():
         for farm in self.farms.keys():
             for fprod in self.graph.successors(farm):
                 for cprod in self.graph.successors(fprod):
-                    transport_costs.append(self.graph[fprod][cprod]['transport_cost'])
+                    transport_costs.append(self.graph[fprod][cprod]['transport_cost'] * self.graph.nodes[fprod]['eggs_per_pack'])
         return np.array(transport_costs).astype(np.float16)
 
     def get_optimising_tuples(self) -> list:

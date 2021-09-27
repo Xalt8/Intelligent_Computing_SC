@@ -105,7 +105,7 @@ def optimize(init_pos):
         swarm.mix()
         swarm.move()
 
-        print(f"Iteration: {i} gbest_val: {round(swarm.gbest_val, 2)}")    
+        print(f"Iteration: {i} gbest_val: {swarm.gbest_val:.2f}")    
 
         gbest_val_list.append(round(swarm.gbest_val, 2))
         if i == iterations-1: # Get the value from the last iteration
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # gbest_vals, time_taken = optimize(split_particles_list[0])
     # print(time_taken)
 
-    experiment(optimise_func=optimize, split_particles_list=split_particles_list[60:], experiment_name='sibv_ex_60_100')
+    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='sibv_ex_2')
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)

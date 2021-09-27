@@ -88,7 +88,7 @@ def optimize(init_pos):
 
 if __name__ == '__main__':
     
-    experiment(optimise_func=optimize, split_particles_list=split_particles_list[:2], experiment_name='cpso_ex_test')
+    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='cpso_ex_2')
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)

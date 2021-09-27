@@ -14,7 +14,7 @@ def sib_mix(vec: np.ndarray, better_vec: np.ndarray)-> np.ndarray:
             differences between the two vectors sorted in descending order([::-1])
         '''
     mix_vec = vec.copy()
-    percent_to_replace = 0.10
+    percent_to_replace = 0.20
     qb = int(np.ceil(np.where(mix_vec!=better_vec,1,0).sum()*percent_to_replace))
     diff_index = np.argsort(np.absolute(better_vec - mix_vec))[::-1]
     for _ in range(qb):
@@ -94,7 +94,7 @@ def optimize(init_pos):
         swarm.mix()
         swarm.move()
 
-        print(f"Iteration: {i} gbest_val: {round(swarm.gbest_val, 2)}")    
+        print(f"Iteration: {i} gbest_val: {swarm.gbest_val:.2f}")    
 
         gbest_val_list.append(round(swarm.gbest_val, 2))
         if i == iterations-1: # Get the value from the last iteration
@@ -112,7 +112,7 @@ if __name__ == '__main__':
     
     # print([max([calculate_profit(vec=parts, sup_cha=rs) for parts in spl]) for spl in split_particles_list]) 
 
-    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='sib_ex')
+    experiment(optimise_func=optimize, split_particles_list=split_particles_list[:10], experiment_name='sib_ex_2_20[:10]')
 
     # experiment(optimize, split_particles_list, "sib_reduced_supply_mix10_jump10")
 

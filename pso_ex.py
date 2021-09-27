@@ -88,7 +88,7 @@ def get_availble_supply(vec:np.ndarray, index:int) -> int:
     return np.maximum(0, avail_supply)[0] # Convert array to int -> [0]
 
 
-@jit(nopython=True)
+@njit
 def random_val(vec:np.ndarray, index: int) -> np.int64:
     ''' Returns a random value that meets demand and supply constraints'''
     available_supply = get_availble_supply(vec=vec, index=index)
