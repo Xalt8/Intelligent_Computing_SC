@@ -14,7 +14,7 @@ def sibv_mix(position: np.ndarray, better_position: np.ndarray) -> np.ndarray:
         else a randomly chosen value between the position and better_position is selected.'''
     
     new_pos = position.copy()
-    percent_to_replace = 0.10
+    percent_to_replace = 0.40
     qb = int(np.ceil(np.where(position!=better_position,1,0).sum()*percent_to_replace))
     diff_index = np.argsort(np.absolute(better_position-position))[::-1]
     for _ in range(qb):
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # gbest_vals, time_taken = optimize(split_particles_list[0])
     # print(time_taken)
 
-    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='sibv_ex_2')
+    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='sibv_ex_40')
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)
