@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 import random
 from dataclasses import dataclass, field
 from numba import njit, jit
+from cpso import optimize
 from graph_ex import sc, sum_to_num
 import joblib
-
+from typing import Callable
 
 # Global variables
 demand_indices, split_list = sc.get_demand_check_variables()
@@ -174,10 +175,11 @@ def make_result_matrix(data) -> pd.DataFrame:
     df.index = as_list
     return df
 
-def experiment(optimise_func, split_particles_list:list, experiment_name:str):
+def experiment(optimise_func:Callable, split_particles_list:list, experiment_name:str):
     ''' Applies an optimisation function to all particles (init_pos) in split_particle_list  
         Creates a dataframe of the results and saves it to an excel file. 
     '''
+    
     results = [optimise_func(init_pos) for init_pos in split_particles_list]
 
     experiment_results = make_result_matrix(results)

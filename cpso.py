@@ -41,7 +41,7 @@ class CPSO(PSO):
             dims = particle['position'].shape
             cognitive = (c1 * np.random.uniform(0, 1, dims)*(particle['pbest_pos'] - particle['position']))
             informers = (c2 * np.random.uniform(0, 1, dims)*(particle['lbest_pos'] - particle['position']))
-            new_velocity = X*(particle['velocity'] + cognitive + informers)
+            new_velocity = X * (particle['velocity'] + cognitive + informers)
             particle['velocity'] = new_velocity
     
     
