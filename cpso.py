@@ -53,6 +53,8 @@ class CPSO(PSO):
 
 def optimize(init_pos):
 
+    optimize.counter += 1
+
     start = time.perf_counter()
 
     iterations = 500
@@ -88,7 +90,9 @@ def optimize(init_pos):
 
 if __name__ == '__main__':
     
-    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='cpso_ex_2')
+    optimize.counter = 0
+    
+    experiment(optimise_func=optimize, split_particles_list=split_particles_list, experiment_name='cpso_ex_19Nov21')
 
     # gbest_vals, total_time = optimize()
     # plot_results(gbest_vals, total_time)

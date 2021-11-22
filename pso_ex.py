@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import random
 from dataclasses import dataclass, field
 from numba import njit, jit
-from cpso import optimize
 from graph_ex import sc, sum_to_num
 import joblib
 from typing import Callable
@@ -256,3 +255,4 @@ split_particles_list = split_particle_list(particle_list, PSO.num_particles)
 
 if __name__ =='__main__':
     pass
+    
